@@ -2,30 +2,19 @@ import torch
 from transformers import AutoTokenizer, AutoModelForSequenceClassification, AutoConfig
 import gc
 import numpy as np
+from sklearn.mixture import GaussianMixture
+import logging
 
 class ModelUtils:
     """
     A utility class for loading and utilizing a transformer-based model for sequence classification.
-
-    Attributes:
-        model_name (str): The name of the model to be loaded.
-        tokenizer (AutoTokenizer): Tokenizer corresponding to the specified model.
-        config (AutoConfig): Configuration for the model, with output_hidden_states enabled.
-        model (torch.nn.Module): The loaded transformer model, either on CPU or GPU.
-
-    Methods:
-        load_model(): Loads the model into an available device (GPU or CPU).
-        model_predict(texts): Predicts the class probabilities for a list of text inputs.
-        get_embeddings(texts): Extracts embeddings for a list of text inputs using the model's last hidden state.
     """
 
     def __init__(self, model_name: str):
         """
         Initializes the ModelUtils class by setting the model name, and loading the tokenizer and config.
-
-        Parameters:
-            model_name (str): The name of the pre-trained model to use.
         """
+        logging.basicConfig(level=logging.INFO)
         self.model_name = model_name
         self.tokenizer = AutoTokenizer.from_pretrained(model_name)
         self.config = AutoConfig.from_pretrained(model_name, output_hidden_states=True)
@@ -34,30 +23,18 @@ class ModelUtils:
     def load_model(self) -> torch.nn.Module:
         """
         Loads the model specified by the model name into the most suitable device (GPU or CPU).
-
-        Returns:
-            torch.nn.Module: The loaded model ready for inference.
         """
         gc.collect()
         torch.cuda.empty_cache()
-        try:
-            model = AutoModelForSequenceClassification.from_pretrained(self.model_name, config=self.config).to('cuda')
-            print("Classification model loaded on CUDA")
-        except RuntimeError:
-            print("CUDA out of memory. Loading classification model on CPU instead.")
-            model = AutoModelForSequenceClassification.from_pretrained(self.model_name, config=self.config).to('cpu')
+        device = 'cuda' if torch.cuda.is_available() else 'cpu'
+        model = AutoModelForSequenceClassification.from_pretrained(self.model_name, config=self.config).to(device)
+        logging.info(f"Classification model loaded on {device.upper()}")
         model.eval()
         return model
 
     def model_predict(self, texts: list) -> np.ndarray:
         """
         Predicts class probabilities for given texts using the model.
-
-        Parameters:
-            texts (list of str): A list of text strings to predict.
-
-        Returns:
-            np.ndarray: An array of class probabilities for each input text.
         """
         predictions = []
         device = self.model.device
@@ -67,25 +44,47 @@ class ModelUtils:
                 outputs = self.model(**inputs)
                 logits = outputs.logits
                 probs = torch.softmax(logits, dim=-1).cpu().numpy()
-                #probs = probs[:, [0, 2, 1]]  # Reorder to ["True", "False", "Not Enough Info"]
             predictions.append(probs)
         return np.array(predictions)
 
     def get_embeddings(self, texts: list) -> np.ndarray:
         """
         Extracts embeddings from the last hidden state of the model for a list of texts.
-
-        Parameters:
-            texts (list of str): A list of text strings from which to extract embeddings.
-
-        Returns:
-            np.ndarray: An array of embeddings for each input text.
         """
         embeddings = []
+        if not texts:
+            logging.error("No texts provided for embedding extraction.")
+            return np.array(embeddings)  # Return empty array if no texts
         with torch.no_grad():
             for text in texts:
                 inputs = self.tokenizer(text, return_tensors='pt', padding=True, truncation=True, max_length=256).to(self.model.device)
                 outputs = self.model(**inputs)
                 emb = outputs.hidden_states[-1].mean(dim=1).cpu().numpy()
-                embeddings.append(emb.flatten())
-        return np.array(embeddings)
+                if emb.size == 0:
+                    logging.warning(f"Failed to generate embeddings for text: {text}")
+                else:
+                    embeddings.append(emb.flatten())
+        return np.vstack(embeddings) if embeddings else np.array([])  # Ensure output is 2D
+
+    def cluster_embeddings(self, embeddings, n_components=3):
+        """
+        Clusters embeddings using a Gaussian Mixture Model.
+        """
+        if embeddings.size == 0:
+            logging.error("Empty embeddings received for clustering.")
+            return np.array([])  # Return empty array if embeddings are empty
+        gmm = GaussianMixture(n_components=n_components, random_state=0)
+        gmm.fit(embeddings)
+        labels = gmm.predict(embeddings)
+        return labels
+
+    def get_all_embeddings(self, data_utils, theme):
+        """
+        Retrieves and aggregates embeddings for all claims and their evidences within a specified theme.
+        """
+        themed_data = data_utils.filter_by_theme(theme)
+        all_texts = []
+        for index, row in themed_data.iterrows():
+            all_texts.append(row['Claim_text'])
+            all_texts.extend(row['Evidence_text'])
+        return self.get_embeddings(all_texts)
