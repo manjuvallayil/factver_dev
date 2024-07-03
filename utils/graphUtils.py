@@ -4,7 +4,6 @@ from sklearn.metrics.pairwise import cosine_similarity
 import matplotlib.pyplot as plt
 import plotly.graph_objects as go
 from plotly.offline import plot
-from utils.modelUtils import ModelUtils
 
 
 def create_and_save_graph(model_utils, themed_data, labels, filepath):
@@ -12,13 +11,14 @@ def create_and_save_graph(model_utils, themed_data, labels, filepath):
 
     # Process each claim and its evidences, assuming they are appropriately labeled
     for idx, group in themed_data.iterrows():
-        claim_id = f"Claim_{idx}"
+        unique_id = group['Claim_topic_id'].split('_')[-1]
+        claim_id = f"Claim_{unique_id}"
         claim_embeddings = model_utils.get_embeddings([group['Claim_text']])[0]
         G.add_node(claim_id, type='claim', text=group['Claim_text'], embedding=claim_embeddings)
 
         evidences = group['Evidence_text']
         for i, evidence in enumerate(evidences):
-            evidence_id = f"Evidence_{idx}_{i}"
+            evidence_id = f"Evidence_{unique_id}_{i}"
             evidence_embeddings = model_utils.get_embeddings([evidence])[0]
             G.add_node(evidence_id, type='evidence', text=evidence, embedding=evidence_embeddings)
             similarity = cosine_similarity(claim_embeddings.reshape(1, -1), evidence_embeddings.reshape(1, -1))[0][0]
@@ -31,17 +31,19 @@ def create_and_save_graph(model_utils, themed_data, labels, filepath):
 
     print(f"Graph created with {G.number_of_nodes()} nodes and {G.number_of_edges()} edges.")
 
+    
 def draw_cluster_graph(data, labels, cluster_id, model_utils, title='Cluster Visualization'):
     G = nx.Graph()
 
     # Add nodes with their respective cluster labels
     for index, row in data.iterrows():
         if labels[index] == cluster_id:
+            unique_id = row['Claim_topic_id'].split('_')[-1]
             if 'Claim_text' in row:
-                node_id = f"Claim_{index}"
+                node_id = f"Claim_{unique_id}"
                 embedding = model_utils.get_embeddings([row['Claim_text']])[0]
             else:
-                node_id = f"Evidence_{index}"
+                node_id = f"Evidence_{unique_id}_{index}"
                 embedding = model_utils.get_embeddings([row['Evidence_text']])[0]
             
             G.add_node(node_id, type='claim' if 'Claim_text' in row else 'evidence', label=embedding)

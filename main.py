@@ -1,5 +1,7 @@
 
 # Import necessary libraries
+import pickle
+import pandas as pd
 from utils.dataUtils import DataUtils
 from utils.modelUtils import ModelUtils
 from utils.graphUtils import create_and_save_graph, draw_cluster_graph
@@ -7,7 +9,7 @@ from utils.graphUtils import create_and_save_graph, draw_cluster_graph
 # Parameters
 dataset_name = 'manjuvallayil/factver_master'
 model_name = 'MoritzLaurer/DeBERTa-v3-base-mnli-fever-anli'
-theme = 'Electric'  # Replace with any valid theme keyword
+theme = 'Electric_Vehicles'  # Replace with any valid theme keyword
 
 # Initialize DataUtils and ModelUtils
 data_utils = DataUtils(dataset_name)
@@ -50,4 +52,4 @@ else:
         for cluster_id in unique_labels:
             draw_cluster_graph(themed_data, labels, cluster_id=cluster_id, model_utils=model_utils, title=f'Cluster Visualization {cluster_id}')
 
-        print(f"Graph visualization of the theme {theme} completed and saved as HTML files.")
+        print("Graph visualization completed and saved as HTML files.")
