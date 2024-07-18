@@ -1,23 +1,21 @@
+# main.ipynb
 
 # Import necessary libraries
 import pickle
 import pandas as pd
 from utils.dataUtils import DataUtils
 from utils.modelUtils import ModelUtils
-from utils.graphUtils import create_and_save_graph, draw_cluster_graph
+from utils.graphUtils import create_and_save_graph, draw_cluster_graph, draw_interconnections
 
 # Parameters
 dataset_name = 'manjuvallayil/factver_master'
 model_name = 'MoritzLaurer/DeBERTa-v3-base-mnli-fever-anli'
-theme = 'Electric_Vehicles'  # Replace with any valid theme keyword
+theme = 'Climate'  # Replace with the specific theme you want to analyze
+selected_claim_id = 'Claim_37'  # Replace with the specific claim ID you want to analyze
 
 # Initialize DataUtils and ModelUtils
 data_utils = DataUtils(dataset_name)
 model_utils = ModelUtils(model_name)
-
-# List available themes (extracted theme parts)
-available_themes = data_utils.grouped_data['Claim_topic_id'].apply(lambda x: x.split('_')[1]).unique()
-print("Available themes:", available_themes)
 
 # Get themed data
 themed_data = data_utils.filter_by_theme(theme)
@@ -37,19 +35,36 @@ else:
     if embeddings.size == 0:
         print("No embeddings generated. Please check the data and model.")
     else:
-        # Cluster embeddings
+        # Cluster embeddings within the selected theme
         labels = model_utils.cluster_embeddings(embeddings)
 
         # Check if clustering is correct
         unique_labels = set(labels)
-        print(f"Unique clusters identified: {unique_labels}")
+        print(f"Unique clusters identified within the theme {theme}: {unique_labels}")
 
         # Create and save graph
         graph_filepath = 'graph.pkl'
         create_and_save_graph(model_utils, themed_data, labels, graph_filepath)
-
-        # Draw cluster graph
+        #"""
+        # Draw cluster graph for the selected theme
         for cluster_id in unique_labels:
-            draw_cluster_graph(themed_data, labels, cluster_id=cluster_id, model_utils=model_utils, title=f'Cluster Visualization {cluster_id}')
-
+            draw_cluster_graph(themed_data, labels, cluster_id=cluster_id, model_utils=model_utils, title=f'{theme} - Cluster Visualization {cluster_id}')
+        #"""
         print("Graph visualization completed and saved as HTML files.")
+
+        # Ensure the selected claim is in the identified cluster
+        claim_in_cluster = False
+        selected_cluster_id = -1  # Variable to store the correct cluster ID
+
+        for index, row in themed_data.iterrows():
+            unique_id = row['Claim_topic_id'].split('_')[-1]
+            if f"Claim_{unique_id}" == selected_claim_id:
+                selected_cluster_id = labels[index]
+                claim_in_cluster = True
+                break
+
+        if claim_in_cluster:
+            # Draw interconnections for the specific claim within the identified cluster
+            draw_interconnections(themed_data, labels, cluster_id=selected_cluster_id, selected_claim_id=selected_claim_id, model_utils=model_utils, title=f' Thematic and Evidence Interconnections of a claim in {theme} theme')
+        else:
+            print(f"Selected claim {selected_claim_id} is not part of any identified cluster")
