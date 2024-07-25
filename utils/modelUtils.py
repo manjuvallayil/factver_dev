@@ -1,5 +1,6 @@
 import torch
 from transformers import AutoTokenizer, AutoModelForSequenceClassification, AutoConfig
+from sentence_transformers import SentenceTransformer
 import gc
 import numpy as np
 from sklearn.mixture import GaussianMixture
@@ -10,12 +11,13 @@ class ModelUtils:
     A utility class for loading and utilizing a transformer-based model for sequence classification.
     """
 
-    def __init__(self, model_name: str):
+    def __init__(self, model_name: str, embedding_model_name: str):
         """
         Initializes the ModelUtils class by setting the model name, and loading the tokenizer and config.
         """
         logging.basicConfig(level=logging.INFO)
         self.model_name = model_name
+        self.embedding_model_name = SentenceTransformer(embedding_model_name)  # Initialize SentenceTransformer model
         self.tokenizer = AutoTokenizer.from_pretrained(model_name)
         self.config = AutoConfig.from_pretrained(model_name, output_hidden_states=True)
         self.model = self.load_model()
@@ -65,7 +67,11 @@ class ModelUtils:
                 else:
                     embeddings.append(emb.flatten())
         return np.vstack(embeddings) if embeddings else np.array([])  # Ensure output is 2D
-
+    
+    def get_sent_embeddings(self, texts: list) -> np.ndarray:
+            embeddings = self.embedding_model_name.encode(texts, convert_to_numpy=True)
+            return embeddings
+    
     def cluster_embeddings(self, embeddings, n_components=3):
         """
         Clusters embeddings using a Gaussian Mixture Model.
@@ -77,14 +83,3 @@ class ModelUtils:
         gmm.fit(embeddings)
         labels = gmm.predict(embeddings)
         return labels
-
-    def get_all_embeddings(self, data_utils, theme):
-        """
-        Retrieves and aggregates embeddings for all claims and their evidences within a specified theme.
-        """
-        themed_data = data_utils.filter_by_theme(theme)
-        all_texts = []
-        for index, row in themed_data.iterrows():
-            all_texts.append(row['Claim_text'])
-            all_texts.extend(row['Evidence_text'])
-        return self.get_embeddings(all_texts)
