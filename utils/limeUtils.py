@@ -42,7 +42,7 @@ class LIMEUtils:
         )
         return exp
     """
-    def generate_explanation(self, claim, evidences, top_k=2, percentile=90):
+    def generate_explanation(self, claim, evidences, top_k=2, percentile=80):
         claim_embedding = self.model_utils.get_embeddings([claim])
         evidence_embeddings = self.model_utils.get_embeddings(evidences)
 
@@ -64,4 +64,4 @@ class LIMEUtils:
             num_samples=100,
             labels=[0, 1, 2]
         )
-        return exp
+        return top_evidences, exp

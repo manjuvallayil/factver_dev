@@ -13,7 +13,7 @@ dataset_name = 'manjuvallayil/factver_master'
 model_name = 'MoritzLaurer/DeBERTa-v3-base-mnli-fever-anli'
 embedding_model_name = 'sentence-transformers/all-mpnet-base-v2'
 theme = 'Climate'  # Replace with the specific theme you want to analyze
-selected_claim_id = 'Claim_5'  # Replace with the specific claim ID you want to analyze
+selected_claim_id = 'Claim_36'  # Replace with the specific claim ID you want to analyze
 
 # Initialize DataUtils, ModelUtils, and LIMEUtils
 data_utils = DataUtils(dataset_name)
@@ -73,7 +73,7 @@ else:
                 break
 
         if claim_in_cluster:
-            print(f"The selected claim belongs to cluster {selected_cluster_id}")
+            print(f"The selected claim ({selected_claim_id}) belongs to cluster {selected_cluster_id}")
             # Draw interconnections for the specific claim within the identified cluster
             draw_interconnections(themed_data, labels, cluster_id=selected_cluster_id, selected_claim_id=selected_claim_id, model_utils=model_utils, title=f'Thematic and Evidence Interconnections of a claim in {theme} theme')
 
@@ -85,8 +85,9 @@ else:
                 claim = selected_claim_row['Claim_text'].values[0]
                 annotated_evidences = selected_claim_row['Evidence_text'].values[0]
 
+                print('\n//////////////////////////////////')
                 print("Baseline Explanation:")
-                baseline_exp = lime_utils.generate_explanation(claim, annotated_evidences, top_k=2)
+                annotated_evidences, baseline_exp = lime_utils.generate_explanation(claim, annotated_evidences, top_k=2)
                 baseline_exp.show_in_notebook(text=True)
                 print(baseline_exp.as_list())
 
@@ -95,9 +96,9 @@ else:
                 for idx, row in themed_data.iterrows():
                     if labels[idx] == selected_cluster_id:
                         thematic_cluster_evidences.extend(row['Evidence_text'])
-
+                print('\n//////////////////////////////////')
                 print("Cluster Explanation:")
-                cluster_exp = lime_utils.generate_explanation(claim, thematic_cluster_evidences, top_k=2)
+                thematic_cluster_evidences, cluster_exp = lime_utils.generate_explanation(claim, thematic_cluster_evidences, top_k=2)
                 cluster_exp.show_in_notebook(text=True)
                 print(cluster_exp.as_list())
 
@@ -107,3 +108,40 @@ else:
 
         else:
             print(f"Selected claim {selected_claim_id} is not part of any identified cluster.")
+
+
+from transformers import AutoTokenizer, AutoModelForCausalLM
+import torch
+
+# Initialize the tokenizer and model outside of the function to avoid reloading them every time
+llama_tokenizer = AutoTokenizer.from_pretrained("meta-llama/Llama-2-7b-hf")
+llama_model = AutoModelForCausalLM.from_pretrained("meta-llama/Llama-2-7b-hf")
+
+def generate_llm_summary_with_selected_evidences(claim, evidences):
+    # Prepare the prompt
+    prompt = f"Claim: {claim}\nEvidence: {evidences}\nIs the claim supported by the evidence? Find and generate an explanation, the explanation you generate should be two sentences maximum and keep it as concise as possible.\n\n"
+
+    # Clear the GPU cache and state
+    torch.cuda.empty_cache()
+    
+    # Generate the output from LLaMA
+    with torch.no_grad():
+        inputs = llama_tokenizer(prompt, return_tensors="pt", max_length=512, truncation=True)
+        outputs = llama_model.generate(inputs['input_ids'], max_new_tokens=200)
+    
+    # Decode the generated text
+    summary = llama_tokenizer.decode(outputs[0], skip_special_tokens=True)
+    
+    return summary.strip()
+
+# Example usage with baseline and clustered explanations
+if claim_in_cluster:
+    """
+    # Baseline summary
+    baseline_summary = generate_llm_summary_with_selected_evidences(claim, annotated_evidences)
+    print("Baseline Summary:\n", baseline_summary)
+    """
+
+    # Clustered summary
+    clustered_summary = generate_llm_summary_with_selected_evidences(claim, thematic_cluster_evidences)
+    print("Clustered Summary:\n", clustered_summary)
