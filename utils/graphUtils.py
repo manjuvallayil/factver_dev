@@ -5,6 +5,7 @@ import matplotlib.pyplot as plt
 import plotly.graph_objects as go
 from plotly.offline import plot
 
+
 def create_and_save_graph(model_utils, themed_data, filepath):
     G = nx.Graph()
 
@@ -90,123 +91,68 @@ def draw_cluster_graph(data, labels, cluster_id, model_utils, title='Cluster Vis
                                      yaxis=dict(showgrid=False, zeroline=False, showticklabels=False)))
 
     plot(fig, filename=f'{title}.html')
-"""
-def draw_interconnections(data, labels, cluster_id, selected_claim_id, model_utils, title='Interconnections Visualization', similarity_threshold=0.7):
+
+def draw_soi(soi, title):
     G = nx.Graph()
 
-    # Find the selected claim and its related evidences
-    selected_claim = None
-    for index, row in data.iterrows():
-        if labels[index] == cluster_id:
-            unique_id = row['Claim_topic_id'].split('_')[-1]
-            if f"Claim_{unique_id}" == selected_claim_id:
-                selected_claim = row
-                break
+    # Add the central claim node
+    claim_id = soi['claim_id']
+    G.add_node(claim_id, type='claim', color='#FA8072', size=35, hovertext=soi['claim'])
 
-    if selected_claim is None:
-        print(f"No claim found with ID {selected_claim_id} in cluster {cluster_id}")
-        return
+    # Add nodes for annotated evidences
+    for i, evidence_text in enumerate(soi['annotated_evidences']):
+        evidence_id = f"Evidence_{claim_id.split('_')[-1]}_{i}"
+        G.add_node(evidence_id, type='evidence', color='#20B2AA', size=30, hovertext=evidence_text)
+        similarity = soi['similarities'][i][2]
+        G.add_edge(claim_id, evidence_id, weight=similarity)
 
-    claim_text = selected_claim['Claim_text']
-    claim_embeddings = model_utils.get_embeddings([claim_text])[0]
-    G.add_node(selected_claim_id, type='claim', embedding=claim_embeddings, cluster_id=cluster_id, color='#FA8072', size=35)
+    # Add nodes for related claims
+    for j, related_claim_text in enumerate(soi['related_claims']):
+        related_claim_id = soi['related_claim_ids'][j]
+        G.add_node(related_claim_id, type='claim', color='#FA8072', size=30, hovertext=related_claim_text)
+        similarity = soi['similarities'][j + len(soi['annotated_evidences'])][2]
+        G.add_edge(claim_id, related_claim_id, weight=similarity)
 
-    evidences = selected_claim['Evidence_text']
-    for i, evidence in enumerate(evidences):
-        evidence_id = f"Evidence_{selected_claim_id.split('_')[-1]}_{i}"
-        evidence_embeddings = model_utils.get_embeddings([evidence])[0]
-        G.add_node(evidence_id, type='evidence', embedding=evidence_embeddings, cluster_id=cluster_id, color='#20B2AA', size=35)
-        similarity = cosine_similarity(claim_embeddings.reshape(1, -1), evidence_embeddings.reshape(1, -1))[0][0]
-        if similarity > similarity_threshold:
-            G.add_edge(selected_claim_id, evidence_id, weight=similarity)
+        # Add thematic cluster evidences for each related claim
+        for k, thematic_evidence_text in enumerate(soi['thematic_cluster_evidences']):
+            thematic_evidence_id = f"Evidence_{related_claim_id.split('_')[-1]}_{k % 6}"  # Use the modulo to ensure 0-5 index
+            G.add_node(thematic_evidence_id, type='evidence', color='#20B2AA', size=15, hovertext=thematic_evidence_text)
+            similarity = soi['similarities'][k + len(soi['annotated_evidences']) + len(soi['related_claims'])][2]
+            G.add_edge(related_claim_id, thematic_evidence_id, weight=similarity)
 
-    # Check for evidence nodes from different clusters and add them with different colors
-    for index, row in data.iterrows():
-        if labels[index] != cluster_id:
-            unique_id = row['Claim_topic_id'].split('_')[-1]
-            evidence_texts = row['Evidence_text']
-            for i, evidence in enumerate(evidence_texts):
-                evidence_id = f"Evidence_{unique_id}_{i}"
-                evidence_embeddings = model_utils.get_embeddings([evidence])[0]
-                G.add_node(evidence_id, type='evidence', embedding=evidence_embeddings, cluster_id=labels[index], color='#008080', size=10)
-                similarity = cosine_similarity(claim_embeddings.reshape(1, -1), evidence_embeddings.reshape(1, -1))[0][0]
-                if similarity > similarity_threshold:
-                    G.add_edge(selected_claim_id, evidence_id, weight=similarity)
-            # Add the related claim with a different color
-            related_claim_id = f"Claim_{unique_id}"
-            related_claim_embeddings = model_utils.get_embeddings([row['Claim_text']])[0]
-            G.add_node(related_claim_id, type='claim', embedding=related_claim_embeddings, cluster_id=labels[index], color='#FA8072', size=25)
-            similarity = cosine_similarity(claim_embeddings.reshape(1, -1), related_claim_embeddings.reshape(1, -1))[0][0]
-            if similarity > similarity_threshold:
-                G.add_edge(selected_claim_id, related_claim_id, weight=similarity)
+    # Print the number of nodes and edges in the graph
+    print(f"SOI graph has {G.number_of_nodes()} nodes and {G.number_of_edges()} edges.")
 
-    print(f"Interconnections graph for {selected_claim_id} has {G.number_of_nodes()} nodes and {G.number_of_edges()} edges.")
-
-    # Remove isolated nodes (nodes without edges)
-    isolated_nodes = [node for node, degree in dict(G.degree()).items() if degree == 0]
-    G.remove_nodes_from(isolated_nodes)
-
-    # Use Plotly for interactive visualization
+    # Plot the graph
     pos = nx.spring_layout(G, k=0.15)  # Increase spacing between nodes
     edge_trace = []
     for edge in G.edges(data=True):
         x0, y0 = pos[edge[0]]
         x1, y1 = pos[edge[1]]
-        
         edge_trace.append(go.Scatter(x=[x0, x1, None], y=[y0, y1, None],
-                                     line=dict(width=0.5*edge[2]['weight'], color='#808080'),
-                                     hoverinfo='none', mode='lines',
-                                     showlegend=False))
-        
+                                     line=dict(width=0.5 * edge[2]['weight'], color='#808080'),
+                                     hoverinfo='none', mode='lines', showlegend=False))
+
     node_trace = go.Scatter(
         x=[pos[node][0] for node in G],
         y=[pos[node][1] for node in G],
-        text=[node for node in G],
+        text=[node for node in G],  # Only show IDs
         mode='markers+text',
         hoverinfo='text',
         marker=dict(showscale=True,
                     color=[G.nodes[node]['color'] for node in G],
                     size=[G.nodes[node]['size'] for node in G],
                     colorbar=dict(thickness=15, title='Node Type', xanchor='left', titleside='right')),
+        hovertext=[G.nodes[node]['hovertext'] for node in G],  # Add hover text
         showlegend=False)
 
     fig = go.Figure(data=edge_trace + [node_trace],
-                layout=go.Layout(title=title, hovermode='closest',
-                                 margin=dict(b=0, l=0, r=0, t=40),
-                                 xaxis=dict(showgrid=False, zeroline=False, showticklabels=False),
-                                 yaxis=dict(showgrid=False, zeroline=False, showticklabels=False)))
-
-    # Add legend manually
-    fig.add_trace(go.Scatter(
-        x=[None], y=[None],
-        mode='markers',
-        marker=dict(size=10, color='#FA8072'),
-        legendgroup='Central Claim',
-        showlegend=True,
-        name='Central Claim'
-    ))
-
-    fig.add_trace(go.Scatter(
-        x=[None], y=[None],
-        mode='markers',
-        marker=dict(size=10, color='#20B2AA'),
-        legendgroup='Direct Evidence',
-        showlegend=True,
-        name='Direct Evidence'
-    ))
-
-    fig.add_trace(go.Scatter(
-        x=[None], y=[None],
-        mode='markers',
-        marker=dict(size=10, color='#008080'),
-        legendgroup='Related Evidence',
-        showlegend=True,
-        name='Related Evidence'
-    ))
+                    layout=go.Layout(title=title, hovermode='closest',
+                                     margin=dict(b=0, l=0, r=0, t=40),
+                                     xaxis=dict(showgrid=False, zeroline=False, showticklabels=False),
+                                     yaxis=dict(showgrid=False, zeroline=False, showticklabels=False)))
 
     plot(fig, filename=f'{title}.html')
-    """
-
 def draw_interconnections(data, labels, cluster_id, selected_claim_id, model_utils, title='Interconnections Visualization', similarity_threshold=0.7):
     G = nx.Graph()
 
@@ -232,7 +178,7 @@ def draw_interconnections(data, labels, cluster_id, selected_claim_id, model_uti
     for i, evidence in enumerate(evidences):
         evidence_id = f"Evidence_{selected_claim_id.split('_')[-1]}_{i}"
         evidence_embeddings = model_utils.get_embeddings([evidence])[0]
-        G.add_node(evidence_id, type='evidence', embedding=evidence_embeddings, cluster_id=cluster_id, color='#20B2AA', size=30)
+        G.add_node(evidence_id, type='evidence', embedding=evidence_embeddings, cluster_id=cluster_id, color='teal', size=30)
         similarity = cosine_similarity(claim_embeddings.reshape(1, -1), evidence_embeddings.reshape(1, -1))[0][0]
         if similarity > similarity_threshold:
             G.add_edge(selected_claim_id, evidence_id, weight=similarity)
@@ -254,17 +200,19 @@ def draw_interconnections(data, labels, cluster_id, selected_claim_id, model_uti
                 evidence_id = f"Evidence_{unique_id}_{i}"
                 evidence_embeddings = model_utils.get_embeddings([evidence])[0]
                 if evidence_id not in G:
-                    G.add_node(evidence_id, type='evidence', embedding=evidence_embeddings, cluster_id=labels[index], color='#20B2AA', size=15)
+                    G.add_node(evidence_id, type='evidence', embedding=evidence_embeddings, cluster_id=labels[index], color='teal', size=15)
                     similarity = cosine_similarity(claim_embeddings.reshape(1, -1), evidence_embeddings.reshape(1, -1))[0][0]
                     if similarity > similarity_threshold:
                         G.add_edge(selected_claim_id, evidence_id, weight=similarity)
 
-    print(f"Interconnections graph for {selected_claim_id} has {G.number_of_nodes()} nodes and {G.number_of_edges()} edges.")
+    print(f"Interconnections graph for {selected_claim_id} initially has {G.number_of_nodes()} nodes and {G.number_of_edges()} edges.")
 
     # Remove isolated nodes (nodes without edges)
     isolated_nodes = [node for node, degree in dict(G.degree()).items() if degree == 0]
     G.remove_nodes_from(isolated_nodes)
 
+    print(f"Interconnections graph for {selected_claim_id} after refining has {G.number_of_nodes()} nodes and {G.number_of_edges()} edges.")
+    
     # Use Plotly for interactive visualization
     pos = nx.spring_layout(G, k=0.15)  # Increase spacing between nodes
     edge_trace = []
