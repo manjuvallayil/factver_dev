@@ -65,3 +65,16 @@ class LIMEUtils:
             labels=[0, 1, 2]
         )
         return top_evidences, exp
+    def generate_explanation_with_soi(self, claim, soi_evidences, top_k=2, similarity_threshold=0.75):
+        # Combine the claim with the SOI evidences
+        combined_text = f"Claim: {claim}. Evidence: {' '.join([evidence for evidence, _ in soi_evidences])}"
+        
+        # Use LIME to explain the prediction on the combined text
+        exp = self.explainer.explain_instance(
+            combined_text,
+            lambda x: self.model_utils.model_predict([x])[0],  # Adapter to handle proper indexing
+            num_features=10,
+            num_samples=100,
+            labels=[0, 1, 2]
+        )
+        return exp

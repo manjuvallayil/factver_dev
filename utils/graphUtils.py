@@ -92,7 +92,8 @@ def draw_cluster_graph(data, labels, cluster_id, model_utils, title='Cluster Vis
 
     plot(fig, filename=f'{title}.html')
 
-def draw_soi(soi, title):
+
+def draw_soi(soi, similarity_threshold, title):
     G = nx.Graph()
 
     # Add the central claim node
@@ -100,51 +101,54 @@ def draw_soi(soi, title):
     G.add_node(claim_id, type='claim', color='#FA8072', size=35, hovertext=soi['claim'])
 
     # Add nodes for annotated evidences
-    for i, evidence_text in enumerate(soi['annotated_evidences']):
-        evidence_id = f"Evidence_{claim_id.split('_')[-1]}_{i}"
+    for i, (evidence_text, evidence_id) in enumerate(soi['annotated_evidences']):
         G.add_node(evidence_id, type='evidence', color='#20B2AA', size=30, hovertext=evidence_text)
         similarity = soi['similarities'][i][2]
-        G.add_edge(claim_id, evidence_id, weight=similarity)
+        if similarity > similarity_threshold:
+            G.add_edge(claim_id, evidence_id, weight=similarity)
 
-    # Add nodes for related claims
-    for j, related_claim_text in enumerate(soi['related_claims']):
-        related_claim_id = soi['related_claim_ids'][j]
+    # Add nodes for related claims and their relevant evidences
+    offset = len(soi['annotated_evidences'])
+    for j, (related_claim_text, related_claim_id) in enumerate(soi['related_claims']):
         G.add_node(related_claim_id, type='claim', color='#FA8072', size=30, hovertext=related_claim_text)
-        similarity = soi['similarities'][j + len(soi['annotated_evidences'])][2]
-        G.add_edge(claim_id, related_claim_id, weight=similarity)
+        similarity = soi['similarities'][offset + j][2]
+        if similarity > similarity_threshold:
+            G.add_edge(claim_id, related_claim_id, weight=similarity)
 
-        # Add thematic cluster evidences for each related claim
-        for k, thematic_evidence_text in enumerate(soi['thematic_cluster_evidences']):
-            thematic_evidence_id = f"Evidence_{related_claim_id.split('_')[-1]}_{k % 6}"  # Use the modulo to ensure 0-5 index
-            G.add_node(thematic_evidence_id, type='evidence', color='#20B2AA', size=15, hovertext=thematic_evidence_text)
-            similarity = soi['similarities'][k + len(soi['annotated_evidences']) + len(soi['related_claims'])][2]
-            G.add_edge(related_claim_id, thematic_evidence_id, weight=similarity)
+        # Add relevant evidences for the related claim
+        for k, (evidence_text, evidence_id) in enumerate(soi['thematic_cluster_evidences']):
+            if evidence_id.startswith(f"Evidence_{related_claim_id.split('_')[-1]}"):
+                G.add_node(evidence_id, type='evidence', color='#20B2AA', size=20, hovertext=evidence_text)
+                similarity = soi['similarities'][offset + len(soi['related_claims']) + k][2]
+                if similarity > similarity_threshold:
+                    G.add_edge(related_claim_id, evidence_id, weight=similarity)
 
-    # Print the number of nodes and edges in the graph
     print(f"SOI graph has {G.number_of_nodes()} nodes and {G.number_of_edges()} edges.")
 
-    # Plot the graph
-    pos = nx.spring_layout(G, k=0.15)  # Increase spacing between nodes
+    # Use Plotly for interactive visualization
+    pos = nx.spring_layout(G, k=0.2)  # Adjust layout for better spacing
     edge_trace = []
     for edge in G.edges(data=True):
         x0, y0 = pos[edge[0]]
         x1, y1 = pos[edge[1]]
         edge_trace.append(go.Scatter(x=[x0, x1, None], y=[y0, y1, None],
                                      line=dict(width=0.5 * edge[2]['weight'], color='#808080'),
-                                     hoverinfo='none', mode='lines', showlegend=False))
+                                     hoverinfo='none', mode='lines',
+                                     showlegend=False))
 
     node_trace = go.Scatter(
         x=[pos[node][0] for node in G],
         y=[pos[node][1] for node in G],
-        text=[node for node in G],  # Only show IDs
+        text=[node for node in G],
         mode='markers+text',
         hoverinfo='text',
         marker=dict(showscale=True,
                     color=[G.nodes[node]['color'] for node in G],
                     size=[G.nodes[node]['size'] for node in G],
                     colorbar=dict(thickness=15, title='Node Type', xanchor='left', titleside='right')),
-        hovertext=[G.nodes[node]['hovertext'] for node in G],  # Add hover text
-        showlegend=False)
+        showlegend=False,
+        hovertext=[G.nodes[node]['hovertext'] for node in G]
+    )
 
     fig = go.Figure(data=edge_trace + [node_trace],
                     layout=go.Layout(title=title, hovermode='closest',
@@ -152,7 +156,36 @@ def draw_soi(soi, title):
                                      xaxis=dict(showgrid=False, zeroline=False, showticklabels=False),
                                      yaxis=dict(showgrid=False, zeroline=False, showticklabels=False)))
 
+    # Add legend manually
+    fig.add_trace(go.Scatter(
+        x=[None], y=[None],
+        mode='markers',
+        marker=dict(size=10, color='#FA8072'),
+        legendgroup='Central Claim',
+        showlegend=True,
+        name='Central Claim'
+    ))
+
+    fig.add_trace(go.Scatter(
+        x=[None], y=[None],
+        mode='markers',
+        marker=dict(size=10, color='#20B2AA'),
+        legendgroup='Direct Evidence',
+        showlegend=True,
+        name='Direct Evidence'
+    ))
+
+    fig.add_trace(go.Scatter(
+        x=[None], y=[None],
+        mode='markers',
+        marker=dict(size=10, color='#008080'),
+        legendgroup='Related Evidence',
+        showlegend=True,
+        name='Related Evidence'
+    ))
+
     plot(fig, filename=f'{title}.html')
+
 def draw_interconnections(data, labels, cluster_id, selected_claim_id, model_utils, title='Interconnections Visualization', similarity_threshold=0.7):
     G = nx.Graph()
 

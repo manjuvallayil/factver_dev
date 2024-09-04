@@ -1,4 +1,5 @@
 import torch
+import torch.nn as nn
 from transformers import AutoTokenizer, AutoModelForSequenceClassification, AutoConfig
 from sentence_transformers import SentenceTransformer
 import gc
@@ -48,6 +49,32 @@ class ModelUtils:
                 probs = torch.softmax(logits, dim=-1).cpu().numpy()
             predictions.append(probs)
         return np.array(predictions)
+    
+    def reduce_embedding_dim(self, embedding, target_dim=768):
+        """
+        Reduces the dimensionality of the given embedding to the target dimension using a dense layer.
+        """
+        dense = nn.Linear(embedding.shape[-1], target_dim).to(self.model.device)
+        reduced_embedding = dense(torch.tensor(embedding).to(self.model.device))
+        return reduced_embedding.detach().cpu().numpy()
+
+    def model_predict_from_embeddings(self, embeddings: np.ndarray) -> np.ndarray:
+        """
+        Predicts class probabilities for given embeddings using the model, after reducing the dimensionality.
+        """
+        device = self.model.device
+
+        # Reduce embedding dimension to match the model's classifier input
+        reduced_embedding = self.reduce_embedding_dim(embeddings)
+
+        with torch.no_grad():
+            # Pass the reduced embedding through the classifier
+            inputs = torch.tensor(reduced_embedding).to(device).unsqueeze(0)  # Add batch dimension if missing
+            outputs = self.model.classifier(inputs)  # Access the classifier part directly
+            logits = outputs.logits if hasattr(outputs, 'logits') else outputs
+            probs = torch.softmax(logits, dim=-1).cpu().numpy()
+
+        return probs
 
     def get_embeddings(self, texts: list) -> np.ndarray:
         """

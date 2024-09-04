@@ -30,7 +30,6 @@ class SOIUtils:
         annotated_evidences = []
         related_claims = []
         thematic_cluster_evidences = []
-        related_claim_ids = []
 
         for index, row in themed_data.iterrows():
             unique_id = row['Claim_topic_id'].split('_')[-1]
@@ -39,18 +38,21 @@ class SOIUtils:
                 annotated_evidences = row['Evidence_text'][:6]  # Get the first 6 evidences related to the claim
 
             elif labels[index] == selected_cluster_id:
-                related_claim_ids.append(unique_id)
-                related_claims.append(row['Claim_text'])
-                thematic_cluster_evidences.extend(row['Evidence_text'])
+                related_claim_id = f"Claim_{unique_id}"
+                related_claim_text = row['Claim_text']
+                related_claims.append((related_claim_id, related_claim_text))
+                
+                for i, evidence_text in enumerate(row['Evidence_text']):
+                    evidence_id = f"Evidence_{unique_id}_{i}"
+                    thematic_cluster_evidences.append((evidence_text, evidence_id))
 
         if selected_claim_text is None:
             raise ValueError(f"Claim ID {selected_claim_id} not found in the provided data.")
 
         return {
             'selected_claim_text': selected_claim_text,
-            'annotated_evidences': annotated_evidences,
+            'annotated_evidences': [(evidence_text, f"Evidence_{selected_claim_id.split('_')[-1]}_{i}") for i, evidence_text in enumerate(annotated_evidences)],
             'related_claims': related_claims,
-            'related_claim_ids': related_claim_ids,
             'thematic_cluster_evidences': thematic_cluster_evidences
         }
 
@@ -71,7 +73,6 @@ class SOIUtils:
         selected_claim_text = data['selected_claim_text']
         annotated_evidences = data['annotated_evidences']
         related_claims = data['related_claims']
-        related_claim_ids = data['related_claim_ids']
         thematic_cluster_evidences = data['thematic_cluster_evidences']
 
         # Get embeddings for the selected claim
@@ -80,43 +81,49 @@ class SOIUtils:
         soi = {
             'claim_id': selected_claim_id,
             'claim': selected_claim_text,
-            'annotated_evidence_ids': [],
             'annotated_evidences': [],
-            'related_claim_ids': [],
             'related_claims': [],
-            'thematic_cluster_evidence_ids': [],
             'thematic_cluster_evidences': [],
             'similarities': []
         }
 
         # Check relevance of annotated evidences
-        for i, evidence_text in enumerate(annotated_evidences):
+        for evidence_text, evidence_id in annotated_evidences:
             evidence_embeddings = self.model_utils.get_embeddings([evidence_text])[0]
             similarity = cosine_similarity(selected_claim_embeddings.reshape(1, -1), evidence_embeddings.reshape(1, -1))[0][0]
             if similarity > similarity_threshold:
-                evidence_id = f"Evidence_{selected_claim_id.split('_')[-1]}_{i}"
-                soi['annotated_evidence_ids'].append(evidence_id)
-                soi['annotated_evidences'].append(evidence_text)
+                soi['annotated_evidences'].append((evidence_text, evidence_id))
                 soi['similarities'].append((selected_claim_text, evidence_text, similarity))
 
         # Check relevance of related claims
-        for j, claim_text in enumerate(related_claims):
+        for related_claim_id, claim_text in related_claims:
             claim_embeddings = self.model_utils.get_embeddings([claim_text])[0]
             similarity = cosine_similarity(selected_claim_embeddings.reshape(1, -1), claim_embeddings.reshape(1, -1))[0][0]
             if similarity > similarity_threshold:
-                related_claim_id = f"Claim_{related_claim_ids[j]}"
-                soi['related_claim_ids'].append(related_claim_id)
-                soi['related_claims'].append(claim_text)
+                soi['related_claims'].append((claim_text, related_claim_id))
                 soi['similarities'].append((selected_claim_text, claim_text, similarity))
         
         # Check relevance of thematic cluster evidences
-        for i, evidence_text in enumerate(thematic_cluster_evidences):
+        for evidence_text, evidence_id in thematic_cluster_evidences:
             evidence_embeddings = self.model_utils.get_embeddings([evidence_text])[0]
             similarity = cosine_similarity(selected_claim_embeddings.reshape(1, -1), evidence_embeddings.reshape(1, -1))[0][0]
             if similarity > similarity_threshold:
-                evidence_id = f"Evidence_{selected_claim_id.split('_')[-1]}_{i % 6}"
-                soi['thematic_cluster_evidence_ids'].append(evidence_id)
-                soi['thematic_cluster_evidences'].append(evidence_text)
+                soi['thematic_cluster_evidences'].append((evidence_text, evidence_id))
                 soi['similarities'].append((selected_claim_text, evidence_text, similarity))
 
         return soi
+
+    def calculate_aggregate_embedding(self, soi):
+        """
+        Calculates the aggregate embedding for the entire SOI.
+        
+        :param soi: The dictionary containing the SOI details.
+        :return: The aggregate embedding for the SOI.
+        """
+        all_texts = [soi['claim']] + [text for text, _ in soi['annotated_evidences']] + \
+                    [text for text, _ in soi['related_claims']] + [text for text, _ in soi['thematic_cluster_evidences']]
+        
+        embeddings = self.model_utils.get_embeddings(all_texts)
+        aggregate_embedding = np.mean(embeddings, axis=0)
+        
+        return aggregate_embedding
