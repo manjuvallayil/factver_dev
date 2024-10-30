@@ -64,11 +64,11 @@ embeddings = np.ascontiguousarray(embeddings, dtype=np.float32)  # Ensure the ar
 
 # Add embeddings to the dataset and save
 filtered_dataset = filtered_dataset.add_column("embeddings", embeddings.tolist())
-filtered_dataset.save_to_disk('/home/qsh5523/Documents/factver/dataset')
+filtered_dataset.save_to_disk('/home/qsh5523/Documents/factver_dev/dataset')
 
 # Save as a pickle file for RAG, if necessary
 df_pandas = filtered_dataset.to_pandas()
-df_pandas.to_pickle('/home/qsh5523/Documents/factver/psgs_w100.tsv.pkl')
+df_pandas.to_pickle('/home/qsh5523/Documents/factver_dev/psgs_w100.tsv.pkl')
 
 
 # Create and save the FAISS index
@@ -76,6 +76,6 @@ index = faiss.IndexFlatL2(embeddings.shape[1])
 index.add(embeddings)
 if not os.path.exists('faiss'):
    os.makedirs('faiss')
-faiss.write_index(index, '/home/qsh5523/Documents/factver/faiss/index.faiss')
+faiss.write_index(index, '/home/qsh5523/Documents/factver_dev/faiss/index.faiss')
 
 print("FAISS index created and saved.")

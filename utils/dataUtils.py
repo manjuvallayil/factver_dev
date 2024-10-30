@@ -33,7 +33,7 @@ class DataUtils:
     @staticmethod
     def numeric_sort_key(s):
         return [int(text) if text.isdigit() else text.lower() for text in re.split('([0-9]+)', s)]
-
+    """
     def filter_by_theme(self, theme):
         if not hasattr(self, 'grouped_data'):
             self.grouped_data = self.group_data()
@@ -41,7 +41,39 @@ class DataUtils:
         theme_pattern = f"{theme}_"  # Matches the theme at the start of the 'Claim_topic_id'
         filtered_data = self.grouped_data[self.grouped_data['Claim_topic_id'].str.contains(theme_pattern, case=False)]
         return filtered_data
+    """
 
+    def filter_by_theme(self, claim_id):
+        """
+        Filters the grouped data based on the Claim_topic_id and extracts the associated theme for filtering.
+        """
+        if not hasattr(self, 'grouped_data'):
+            self.grouped_data = self.group_data()
+
+        # Find the row with the matching Claim_topic_id
+        claim_row = None
+        for index, row in self.grouped_data.iterrows():
+            # Check if the claim_id matches the last part of the Claim_topic_id (e.g., 'Claim_36')
+            unique_id = row['Claim_topic_id'].split('_')[-1]
+            if unique_id == claim_id.split('_')[-1]:
+                claim_row = row
+                break  # Stop searching after the first match
+
+        if claim_row is None:
+            print(f"No data found for Claim_topic_id: {claim_id}")
+            return pd.DataFrame()  # Return an empty DataFrame if no match
+
+        # Extract the theme from the matched Claim_topic_id
+        claim_topic_id = claim_row['Claim_topic_id']
+        theme = claim_topic_id.split('_')[1]  # Assuming the theme is the second part of the Claim_topic_id
+        print(f"\n The selected Claim belongs to the theme: {theme}")
+
+        # Filter the grouped data for all claims with the same theme
+        theme_pattern = f"{theme}_"  # Matches the theme part in the 'Claim_topic_id'
+        filtered_data = self.grouped_data[self.grouped_data['Claim_topic_id'].str.contains(theme_pattern, case=False)]
+
+        return theme, filtered_data
+    
     def get_embeddings_for_clustering(self, model_utils):
         embeddings = []
         for index, row in self.grouped_data.iterrows():
