@@ -110,3 +110,21 @@ class ModelUtils:
         gmm.fit(embeddings)
         labels = gmm.predict(embeddings)
         return labels
+    
+    def perform_clustering_carag_u(self, dataset_vectors, n_clusters=10):
+        """
+        Performs unsupervised clustering using GMM-EM on the entire dataset.
+
+        Args:
+            dataset_vectors: Vector representations of the dataset.
+            n_clusters: Number of clusters for GMM.
+
+        Returns:
+            cluster_labels: Labels for each dataset vector indicating its cluster.
+        """
+
+        print("Clustering dataset using GMM-EM...")
+        gmm = GaussianMixture(n_components=n_clusters, random_state=42)
+        cluster_labels = gmm.fit_predict(dataset_vectors)
+        print(f"Clustering complete. {n_clusters} clusters identified.")
+        return cluster_labels

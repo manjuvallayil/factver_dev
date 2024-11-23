@@ -7,6 +7,7 @@ from transformers import RagTokenizer, RagRetriever, RagConfig, RagSequenceForGe
 from datasets import load_dataset
 from sentence_transformers import SentenceTransformer
 
+
 class RAGUtils:
     def __init__(self, passages_path, index_path, embedding_model_name='sentence-transformers/all-mpnet-base-v2'):
         self.passages_path = passages_path
@@ -133,3 +134,5 @@ class RAGUtils:
             return vectors
         except Exception as e:
             raise RuntimeError(f"Error loading dataset vectors: {str(e)}")
+        
+    

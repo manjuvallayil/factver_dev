@@ -74,6 +74,11 @@ class DataUtils:
 
         return theme, filtered_data
     
+    def themed_data(self,theme):
+        theme_pattern = f"{theme}_"
+        themed_data = self.grouped_data[self.grouped_data['Claim_topic_id'].str.contains(theme_pattern, case=False)]
+        return themed_data
+    
     def get_embeddings_for_clustering(self, model_utils):
         embeddings = []
         for index, row in self.grouped_data.iterrows():
@@ -85,3 +90,4 @@ class DataUtils:
                     evidence_embeddings = model_utils.get_embeddings([evidence])
                     embeddings.extend(evidence_embeddings)
         return np.array(embeddings)  # Ensure to return a proper NumPy array
+    
