@@ -141,7 +141,7 @@ class SOIUtils:
         """
         # Extract the selected claim text and related data
         selected_claim_text = None
-        thematic_cluster_evidences = []
+        cluster_evidences = []
         related_claims = []
 
         for index, row in grouped_data.iterrows():
@@ -160,7 +160,7 @@ class SOIUtils:
             'claim_id': selected_claim_id,
             'claim': selected_claim_text,
             'related_claims': [],
-            'thematic_cluster_evidences': [],
+            'cluster_evidences': [],
             'similarities': []
         }
 
@@ -180,7 +180,7 @@ class SOIUtils:
                         related_claims.append((claim_text, f"Claim_{unique_id}"))
                         soi['similarities'].append((selected_claim_text, claim_text, similarity))
 
-                # Compare similarity for thematic cluster evidences
+                # Compare similarity for cluster evidences
                 for i, evidence_text in enumerate(row['Evidence_text']):
                     evidence_id = f"Evidence_{unique_id}_{i}"
                     evidence_embeddings = self.model_utils.get_embeddings([evidence_text])[0]
@@ -189,19 +189,19 @@ class SOIUtils:
                         evidence_embeddings.reshape(1, -1)
                     )[0][0]
                     if similarity > similarity_threshold:
-                        thematic_cluster_evidences.append((evidence_text, evidence_id))
+                        cluster_evidences.append((evidence_text, evidence_id))
                         soi['similarities'].append((selected_claim_text, evidence_text, similarity))
 
         soi['related_claims'] = related_claims
-        soi['thematic_cluster_evidences'] = thematic_cluster_evidences
+        soi['cluster_evidences'] = cluster_evidences
 
         # If no items met the threshold, include only the claim itself
-        if not soi['related_claims'] and not soi['thematic_cluster_evidences']:
+        if not soi['related_claims'] and not soi['cluster_evidences']:
             print("No items met the similarity threshold. Including the claim itself in the SOI.")
             soi['related_claims'] = [(selected_claim_text, selected_claim_id)]
 
         print(f"SOI extracted with {len(soi['related_claims'])} related claims and "
-            f"{len(soi['thematic_cluster_evidences'])} thematic evidences.")
+            f"{len(soi['cluster_evidences'])} thematic evidences.")
 
         return soi
     
@@ -213,7 +213,7 @@ class SOIUtils:
         :return: The aggregate embedding for the SOI.
         """
         all_texts = [soi['claim']] + [text for text, _ in soi['related_claims']] + \
-                    [text for text, _ in soi['thematic_cluster_evidences']]
+                    [text for text, _ in soi['cluster_evidences']]
         
         # Ensure the list of texts is not empty
         if len(all_texts) == 0:

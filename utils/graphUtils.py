@@ -30,7 +30,8 @@ def create_and_save_graph(model_utils, themed_data, filepath):
         pickle.dump(G, f)
 
     print(f"Graph created with {G.number_of_nodes()} nodes and {G.number_of_edges()} edges.")
-
+"""
+# 'draw_cluster_graph' without trimming outliers 
 def draw_cluster_graph(data, labels, cluster_id, model_utils, title='Cluster Visualization'):
     G = nx.Graph()
 
@@ -91,7 +92,72 @@ def draw_cluster_graph(data, labels, cluster_id, model_utils, title='Cluster Vis
                                      yaxis=dict(showgrid=False, zeroline=False, showticklabels=False)))
 
     plot(fig, filename=f'{title}.html')
+"""
+# 'draw_cluster_graph' with trimming outliers included
+def draw_cluster_graph(data, labels, cluster_id, model_utils, title='Cluster Visualization', min_degree=2, min_similarity=0.5):
+    G = nx.Graph()
 
+    # Add nodes with their respective cluster labels
+    for index, row in data.iterrows():
+        if labels[index] == cluster_id:
+            unique_id = row['Claim_topic_id'].split('_')[-1]
+            if 'Claim_text' in row:
+                node_id = f"Claim_{unique_id}"
+                embedding = model_utils.get_embeddings([row['Claim_text']])[0]
+                G.add_node(node_id, type='claim', label=embedding)
+            for i, evidence in enumerate(row['Evidence_text']):
+                evidence_id = f"Evidence_{unique_id}_{i}"
+                embedding = model_utils.get_embeddings([evidence])[0]
+                G.add_node(evidence_id, type='evidence', label=embedding)
+
+    # Add edges based on similarity
+    for node1, data1 in G.nodes(data=True):
+        for node2, data2 in G.nodes(data=True):
+            if node1 != node2:
+                similarity = cosine_similarity(data1['label'].reshape(1, -1), data2['label'].reshape(1, -1))[0][0]
+                if similarity > min_similarity:
+                    G.add_edge(node1, node2, weight=similarity)
+
+    # Filter outliers: Remove nodes with degree < min_degree
+    low_degree_nodes = [node for node, degree in dict(G.degree()).items() if degree < min_degree]
+    G.remove_nodes_from(low_degree_nodes)
+
+    print(f"Cluster {cluster_id} graph has {G.number_of_nodes()} nodes and {G.number_of_edges()} edges after trimming outliers.")
+
+    # Use Plotly for interactive visualization
+    pos = nx.spring_layout(G)
+    edge_trace = []
+    for edge in G.edges(data=True):
+        x0, y0 = pos[edge[0]]
+        x1, y1 = pos[edge[1]]
+        edge_trace.append(go.Scatter(x=[x0, x1, None], y=[y0, y1, None],
+                                     line=dict(width=0.5 * edge[2]['weight'], color='blue'),
+                                     hoverinfo='none', mode='lines', showlegend=False))
+
+    node_colors = []
+    for node in G:
+        if G.nodes[node]['type'] == 'claim':
+            node_colors.append('coral')
+        else:
+            node_colors.append('teal')
+
+    node_trace = go.Scatter(
+        x=[pos[node][0] for node in G],
+        y=[pos[node][1] for node in G],
+        text=[node for node in G],  # Only show IDs
+        mode='markers+text',
+        hoverinfo='text',
+        marker=dict(showscale=True, color=node_colors, size=15,
+                    colorbar=dict(thickness=15, title='Node Type', xanchor='left', titleside='right')),
+        showlegend=False)
+
+    fig = go.Figure(data=edge_trace + [node_trace],
+                    layout=go.Layout(title=title, showlegend=False, hovermode='closest',
+                                     margin=dict(b=0, l=0, r=0, t=40),
+                                     xaxis=dict(showgrid=False, zeroline=False, showticklabels=False),
+                                     yaxis=dict(showgrid=False, zeroline=False, showticklabels=False)))
+
+    plot(fig, filename=f'{title}.html')
 
 def draw_soi(soi, similarity_threshold, title):
     G = nx.Graph()

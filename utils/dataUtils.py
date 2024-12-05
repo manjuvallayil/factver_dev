@@ -91,3 +91,32 @@ class DataUtils:
                     embeddings.extend(evidence_embeddings)
         return np.array(embeddings)  # Ensure to return a proper NumPy array
     
+    def get_full_data(self, claim_id):
+        """
+        Retrieves the full grouped dataset and ensures the selected claim ID exists within the dataset.
+        CARAG-U does not filter data by theme, as it works on the entire dataset.
+
+        Args:
+            claim_id (str): The ID of the selected claim (e.g., 'Claim_36').
+
+        Returns:
+            pd.DataFrame: The full grouped data if the claim ID is valid; otherwise, an empty DataFrame.
+        """
+        if not hasattr(self, 'grouped_data'):
+            self.grouped_data = self.group_data()
+
+        # Validate the presence of the claim in the dataset
+        claim_row = None
+        for index, row in self.grouped_data.iterrows():
+            # Match the claim ID by the last part of 'Claim_topic_id'
+            unique_id = row['Claim_topic_id'].split('_')[-1]
+            if unique_id == claim_id.split('_')[-1]:
+                claim_row = row
+                break
+
+        if claim_row is None:
+            print(f"No data found for Claim ID: {claim_id}")
+            return pd.DataFrame()  # Return an empty DataFrame if no match
+
+        print(f"Claim ID {claim_id} is valid and exists in the dataset.")
+        return self.grouped_data
