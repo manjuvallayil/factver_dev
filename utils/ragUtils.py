@@ -84,7 +84,7 @@ class RAGUtils:
         aggregated_embedding = np.mean(embeddings, axis=0)
         return aggregated_embedding
 
-    def retrieve_evidence(self, claim, aggregated_embedding=None, alpha=0.5):
+    def retrieve_evidence(self, claim, n_docs, aggregated_embedding=None, alpha=0.5, ):
         # Tokenize the claim for RAG
         input_ids = self.tokenizer(claim, return_tensors="pt").input_ids
         question_hidden_states = self.rag_model.question_encoder(input_ids)[0]
@@ -109,7 +109,7 @@ class RAGUtils:
 
         # Retrieve documents based on the claim or combined embedding
         try:
-            retrieved_doc_embeds, doc_ids, doc_dicts = self.retriever.retrieve(question_hidden_states_np, n_docs=6)
+            retrieved_doc_embeds, doc_ids, doc_dicts = self.retriever.retrieve(question_hidden_states_np, n_docs)
             retrieved_evidence = [" ".join(doc['text']) if isinstance(doc['text'], list) else doc['text'] for doc in doc_dicts]
             #retrieved_evidence = [doc['text'] for doc in doc_dicts]
             #retrieved_evidence = [doc['text'][0] for doc in doc_dicts]

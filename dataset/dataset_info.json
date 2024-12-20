@@ -1,0 +1,49 @@
+{
+  "builder_name": "csv",
+  "citation": "",
+  "config_name": "default",
+  "dataset_name": "factver_master",
+  "dataset_size": 1242615,
+  "description": "",
+  "download_checksums": {
+    "hf://datasets/manjuvallayil/factver_master@293d7463a9d39044cf130fdbd90e3a22ce6318a4/factver_master.csv": {
+      "num_bytes": 1164191,
+      "checksum": null
+    }
+  },
+  "download_size": 1164191,
+  "features": {
+    "title": {
+      "dtype": "string",
+      "_type": "Value"
+    },
+    "text": {
+      "dtype": "string",
+      "_type": "Value"
+    },
+    "embeddings": {
+      "feature": {
+        "dtype": "float64",
+        "_type": "Value"
+      },
+      "_type": "Sequence"
+    }
+  },
+  "homepage": "",
+  "license": "",
+  "size_in_bytes": 2406806,
+  "splits": {
+    "train": {
+      "name": "train",
+      "num_bytes": 1242615,
+      "num_examples": 3102,
+      "dataset_name": "factver_master"
+    }
+  },
+  "version": {
+    "version_str": "0.0.0",
+    "major": 0,
+    "minor": 0,
+    "patch": 0
+  }
+}
