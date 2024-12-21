@@ -71,6 +71,8 @@ pip install -r requirements.txt
 
 ---
 
+### 📦 Repository Structure
+
 - **datasets/**: Contains the serialized FactVer dataset with textual data and embeddings, ready for retrieval operations.
 - **faiss/**: Stores the FAISS index for efficient similarity-based retrieval of evidence embeddings.
 - **utils/dataUtils.py**: Provides utilities for loading, grouping, and filtering datasets, including theme-based filtering, embedding extraction, and support for both theme-specific and full-dataset operations in AFV tasks.
@@ -80,7 +82,6 @@ pip install -r requirements.txt
 - **utils/soi.py**: Contains utilities for identifying the Subset of Interest (SOI) and performing contextual embedding aggregation. Supports both CARAG and CARAG-U methodologies, enabling refinement of evidence based on similarity thresholds and clustering labels.
 - This repository also contains generated visualizations (e.g., SOI graphs, clustering graphs) and CSV files created during CARAG execution for analysis and interpretation.
 - **README.md**: Documentation for the repository.
+- **carag_eval.ipynb**: Main evaluation notebook for the CARAG framework.
 
 ---
-## carag_eval.ipynb**:
-- Main evaluation notebook for the CARAG framework.
