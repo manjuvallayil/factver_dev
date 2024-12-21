@@ -49,6 +49,14 @@ class ModelUtils:
                 probs = torch.softmax(logits, dim=-1).cpu().numpy()
             predictions.append(probs)
         return np.array(predictions)
+    
+    def reduce_embedding_dim(self, embedding, target_dim=768):
+        """
+        Reduces the dimensionality of the given embedding to the target dimension using a dense layer.
+        """
+        dense = nn.Linear(embedding.shape[-1], target_dim).to(self.model.device)
+        reduced_embedding = dense(torch.tensor(embedding).to(self.model.device))
+        return reduced_embedding.detach().cpu().numpy()
 
     def model_predict_from_embeddings(self, embeddings: np.ndarray) -> np.ndarray:
         """
