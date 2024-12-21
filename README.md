@@ -1,4 +1,4 @@
-   # CARAG: Context-Aware Retrieval and Explanation Generation Framework
+# CARAG: Context-Aware Retrieval and Explanation Generation Framework
 
 Welcome to the official repository for CARAG, an end-to-end explainable framework for Automated Fact Verification (AFV) systems. This repository includes the source code and dataset used in our research, which introduces CARAG as a novel methodology integrating thematic embeddings and Subset of Interest (SOI) for contextually aligned and transparent fact verification.
 
