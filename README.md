@@ -67,10 +67,10 @@ pip install -r requirements.txt
    - Visualizing the SOI graph.
 
 3. **Output**:  
-   The notebook generates quantitative and qualitative evaluation metrics and visualizations showcasing CARAG’s thematic alignment and explainability.
-
+   The notebook generates quantitative and qualitative evaluation metrics and visualizations showcasing CARAG’s thematic alignment and explainability (quantitative results are shared in the euclidean_x_x.csv files and the SOI graph of an ex:claim is given below).
+   
+   ![alt text](soi_graph.png)
 ---
-
 
 ### 📦 Repository Structure
 
