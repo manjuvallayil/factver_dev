@@ -13,7 +13,7 @@ from langchain_community.vectorstores import Chroma
 from langchain_community.embeddings.sentence_transformer import SentenceTransformerEmbeddings
 import os
 #os.environ['HUGGINGFACE_API_TOKEN']="---"
-HUGGINGFACE_API_TOKEN = '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'
+HUGGINGFACE_API_TOKEN = 'my_key'
 dataset_name = 'manjuvallayil/factver_master'
 page_content_column = "Evidence_text"
 loader = HuggingFaceDatasetLoader(dataset_name, page_content_column)
