@@ -132,6 +132,7 @@ class SOIUtils:
             # Get cluster label for this row
             cluster_id = labels[index]
             unique_id = row['Claim_topic_id'].split('_')[-1]
+            
 
             # Match the selected claim
             if f"Claim_{unique_id}" == selected_claim_id:

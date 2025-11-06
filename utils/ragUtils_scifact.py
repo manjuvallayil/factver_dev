@@ -120,7 +120,7 @@ class RAGUtils:
 
             # Retrieve original doc_ids (these are the custom 'id' fields you formatted)
             retrieved_original_ids = [doc['id'] if 'id' in doc else None for doc in doc_dicts]
-
+            
             return retrieved_evidence, doc_ids, retrieved_original_ids
         except Exception as e:
             print("An error occurred during retrieval:", str(e))
