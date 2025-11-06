@@ -1,0 +1,50 @@
+{
+  "builder_name": "scifact",
+  "citation": "@inproceedings{Wadden2020FactOF,\n  title={Fact or Fiction: Verifying Scientific Claims},\n  author={David Wadden and Shanchuan Lin and Kyle Lo and Lucy Lu Wang and Madeleine van Zuylen and Arman Cohan and Hannaneh Hajishirzi},\n  booktitle={EMNLP},\n  year={2020},\n}\n",
+  "config_name": "corpus",
+  "dataset_name": "scifact",
+  "dataset_size": 7993560,
+  "description": "SciFact, a dataset of 1.4K expert-written scientific claims paired with evidence-containing abstracts, and annotated with labels and rationales.\n",
+  "download_checksums": {
+    "https://scifact.s3-us-west-2.amazonaws.com/release/latest/data.tar.gz": {
+      "num_bytes": 3115079,
+      "checksum": null
+    }
+  },
+  "download_size": 3115079,
+  "features": {
+    "title": {
+      "dtype": "string",
+      "_type": "Value"
+    },
+    "text": {
+      "dtype": "string",
+      "_type": "Value"
+    },
+    "embeddings": {
+      "feature": {
+        "dtype": "float64",
+        "_type": "Value"
+      },
+      "_type": "Sequence"
+    }
+  },
+  "homepage": "https://scifact.apps.allenai.org/",
+  "license": "",
+  "size_in_bytes": 11108639,
+  "splits": {
+    "train": {
+      "name": "train",
+      "num_bytes": 7993560,
+      "num_examples": 5183,
+      "dataset_name": "scifact"
+    }
+  },
+  "version": {
+    "version_str": "1.0.0",
+    "description": "",
+    "major": 1,
+    "minor": 0,
+    "patch": 0
+  }
+}
